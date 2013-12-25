@@ -1,0 +1,165 @@
+package main
+
+/*
+平衡二叉树代码
+已完成：1.数值顺序插入，2.中序遍历，3.前序遍历，4.后序便利
+学到的精髓：1.数据排序、遍历的递归调用
+			2.使用channel、闭包 实现递归函数的结束控制和检查
+			3.树结构遍历的方法
+*/
+import (
+	"fmt"
+	"runtime"
+)
+
+type Tree struct {
+	Left  *Tree
+	Value int
+	Right *Tree
+}
+
+//声明一个树结构，返回根节点指针
+func NewTree() *Tree {
+	temp := new(Tree)
+	temp.Value = 0
+	temp.Left = nil
+	temp.Right = nil
+	return temp
+}
+
+//向树结构中写入一个数值，根据数值与root节点的大小，选择root、left、right节点插入
+func (t *Tree) Add(num int) {
+	if t.Left == nil && t.Right == nil {
+		t.Value = num
+		left := NewTree()
+		t.Left = left
+		right := NewTree()
+		t.Right = right
+	} else {
+		if num <= t.Value {
+			t.Left.Add(num)
+		} else {
+			t.Right.Add(num)
+		}
+	}
+
+}
+
+//递归方法遍历整棵树结构，将各个节点上存的值放入channel中
+func walkThrough(t *Tree, ch chan int) {
+	if t.Left.Left == nil && t.Right.Right == nil {
+		ch <- t.Value
+	} else {
+		if t.Left.Left != nil {
+			walkThrough(t.Left, ch)
+		}
+		ch <- t.Value
+		if t.Right.Left != nil {
+			walkThrough(t.Right, ch)
+		}
+	}
+
+}
+
+//利用闭包实现channel的关闭，从而实现定位到递归方法的结束
+func adjust(t *Tree) *Tree {
+	ch := make(chan int)
+	go func() {
+		walkThrough(t, ch)
+		close(ch)
+	}()
+	array := []int{}
+	for v := range ch {
+		array2 := append(array, v)
+		fmt.Println(v)
+		array = array2
+	}
+	fmt.Println(array)
+	fmt.Println(len(array))
+	fmt.Println(array[len(array)/2])
+	fmt.Println(array[0:int(len(array)/2)])
+	fmt.Println(array[int(len(array)/2+1):len(array)])
+	temp := NewTree()
+	reInsert(temp, array)
+
+	return temp
+}
+
+//递归方法，将排序的数据重新插入，得到平衡二叉树
+func reInsert(t *Tree, array []int) {
+	fmt.Printf("*%v,%v*\n", array, len(array))
+	if len(array) > 0 {
+		if len(array) == 1 {
+			t.Add(array[0])
+		} else {
+			t.Add(array[int(len(array)/2)])
+			reInsert(t.Left, array[0:int(len(array)/2)])
+			if int(len(array)/2+1) <= len(array) {
+				reInsert(t.Right, array[int(len(array)/2+1):len(array)])
+			}
+		}
+	}
+}
+
+//中序遍历
+func (t *Tree) LDR() {
+	if t.Left.Left == nil && t.Right.Right == nil {
+		fmt.Printf("#%v ", t.Value)
+	} else {
+		if t.Left.Left != nil {
+			t.Left.LDR()
+		}
+		fmt.Printf("#%v ", t.Value)
+		if t.Right.Left != nil {
+			t.Right.LDR()
+		}
+	}
+}
+
+//前序遍历
+func (t *Tree) DLR() {
+	if t.Left.Left == nil && t.Right.Right == nil {
+		fmt.Printf("#%v ", t.Value)
+	} else {
+		fmt.Printf("#%v ", t.Value)
+		if t.Left.Left != nil {
+			t.Left.LDR()
+		}
+
+		if t.Right.Left != nil {
+			t.Right.LDR()
+		}
+	}
+}
+
+//后续遍历
+func (t *Tree) LRD() {
+	if t.Left.Left == nil && t.Right.Right == nil {
+		fmt.Printf("#%v ", t.Value)
+	} else {
+		if t.Left.Left != nil {
+			t.Left.LDR()
+		}
+		if t.Right.Left != nil {
+			t.Right.LDR()
+		}
+		fmt.Printf("#%v ", t.Value)
+	}
+}
+func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	//fmt.Println(runtime.NumCPU())
+	temp := NewTree()
+	testArray := []int{1, 2, 8, 1, 5, 3, 13}
+	for i := 0; i < len(testArray); i++ {
+		temp.Add(testArray[i])
+		temp = adjust(temp)
+
+	}
+	temp.LDR()
+	fmt.Println()
+	temp.DLR()
+	fmt.Println()
+	temp.LRD()
+	fmt.Println()
+}
